@@ -1,0 +1,13 @@
+<div class='jumbotron'>
+  <h1 class="display-3">Actor App</h1>
+  <p class='lead'>
+  	<label for='addressText'>Actor: </label>
+  	<input type='text' class='form-control' id='actorText'>
+  	<br/>
+    <button type="button" class="btn btn-primary btn-lg" id="searchButton">Search Actor</button>
+    <br/>
+    <br/>
+    <b>This actor performs in the following movies:</b>
+    <ul><li ng-repeat="movie in displaymovies">{{movie}}</li></ul>
+  </p>
+</div>
