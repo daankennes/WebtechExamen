@@ -13,43 +13,45 @@ angular.module('actorApp', ['ngRoute'])
 	        });
 	})
 	
-	.controller('homeCtrl', function($scope, getMoviesSrv, checkMoviesSrv) {
+	.controller('homeCtrl', function($scope, getMoviesSrv, checkMoviesSrv, saveMovieSrv) {
 		
 	    	$('#searchButton').on('click', function (e) {
 
 
 	    		var actor = $('#actorText').val();
 	    		
-	    		var datafound = false;
+	    		var notfound = true;
 	    		
 	    		//check if actor exists in couchDB. If true, bind movies to $scope.movies
 	    		checkMoviesSrv.checkMoviesInDB().then(function(data){
-	    			console.log(data);
-	    			for (var i = 0; i < data.data.rows.length; i++){
-	    				if (data.data.rows[i].key === actor){
+	    			
+	    			for (var i = 0; i < data.data.total_rows; i++){
+	    				if (data.data.rows[i].key.toLowerCase() === actor.toLowerCase()){
+	    					
 	    					console.log(data.data.rows[i].value);
-	    					$scope.movies = data.data.rows[i].value;
-	    					datafound = true;
+	    					$scope.displaymovies = data.data.rows[i].value;
+	    					notfound = false;
+	    					console.log("Found in CouchDB");
 	    				}
 	    			}
-	    		});
-	    		
-	    		console.log($scope.movies);
-	    		
-	    		//if datafound is still false, use getMoviesSrv service
-	    		if (!datafound){
+	    		}).then(function(){
 	    			
-	    			console.log("Data not found in DB");
-	    			
-		    		getMoviesSrv.getMovies(actor).then(function(data){
+		    		//if notfound is still true, use getMoviesSrv service
+		    		if (notfound){
 		    			
-		    			console.log(data);
-		    			//display data
-		    			$scope.displaymovies = data.movies;
-		    			console.log($scope.displaymovies);
+		    			console.log("Data not found in DB");
 		    			
-		    		});
-	    		}
+			    		getMoviesSrv.getMovies(actor).then(function(data){
+			    			
+			    			console.log(data);
+			    			//display data
+			    			$scope.displaymovies = data.movies;
+			    			
+			    			//save data to CouchDB
+			    			saveMovieSrv.saveMovieToDB(data);
+			    		});
+		    		}		
+	    		})   		
 	    	});
     })
    
@@ -80,12 +82,6 @@ angular.module('actorApp', ['ngRoute'])
     
  
     .service('checkMoviesSrv', function($window, $http, $q){
-		  /*this.setObject = function(key, value){
-			  $window.localStorage[key] = JSON.stringify(value);
-			  //Save in CouchDB
-			  //$http.put('../../' + key, value);
-		  };*/
-    	
     	
     	this.checkMoviesInDB = function(data){
     		
@@ -101,7 +97,35 @@ angular.module('actorApp', ['ngRoute'])
     			
     		return q.promise;
     		
-    		
     	};
 		  
-	});
+	})
+
+	.service('saveMovieSrv', function($window, $http, $q){
+		
+		this.saveMovieToDB = function(data){
+			
+			var q = $q.defer();
+			var url = 'http://127.0.0.1:5984/examen/';
+			
+			data.type = "actor";
+			console.log(data);
+			
+			$http.put(url + data.actor.toLowerCase().trim(), JSON.stringify(data))
+	  		 .success(function (data, status, headers) {
+	               console.log("Actor + movies saved in CouchDB");
+	           })
+	           .error(function (data, status, header, config) {
+	               console.log(data);
+	           })
+				 .then(function(data){
+					 q.resolve(data);
+				 }, function error(err) {
+					 q.reject(err);
+				 });
+			
+			return q.promise;
+			
+		};
+		  
+	})
